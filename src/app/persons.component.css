@@ -1,0 +1,25 @@
+
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.personagem-card {
+  /*width: 250px;*/
+  margin: 24px;
+}
+
+.personagem-card img {
+  width: 250px;
+  height: 250px;
+}
+
+.personagem-card .mat-card-title {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
