@@ -1,5 +1,5 @@
 <div class="container">
-  <div *ngFor="let personagem of personagens$ | async; trackBy: track ">
+  <div *ngFor="let personagem of personagens$ | async |  select:'personagens'; trackBy: track ">
     <mat-card class="personagem-card">
       <mat-card-header>
         <mat-card-title>{{ personagem.nome }}</mat-card-title>
@@ -9,9 +9,9 @@
       <mat-card-content>
         <!--<p *ngIf="personagem.sorte">{{ personagem.sorte }}</p>-->
       </mat-card-content>
-      <mat-card-actions>
-        <button mat-button>EDITAR</button>
-        <button mat-button>APAGAR</button>
+      <mat-card-actions align="end">
+        <button mat-button (click)="editar_personagem(personagem)">EDITAR</button>
+        <button mat-button (click)="apaga_personagem(personagem.id)">APAGAR</button>
       </mat-card-actions>
     </mat-card>
   </div>

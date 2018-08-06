@@ -1,19 +1,22 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
-
-import { AppComponent } from './app.component';
+import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
+import { MatButtonModule, MatCardModule, MatDialogModule, MatGridListModule, MatInputModule } from '@angular/material';
 import { Apollo, ApolloModule } from 'apollo-angular';
 import { HttpLink, HttpLinkModule } from 'apollo-angular-link-http';
-import { PersonsComponent } from './persons.component';
 import { InMemoryCache } from 'apollo-cache-inmemory';
-import { MatButtonModule, MatCardModule, MatGridListModule } from '@angular/material';
+import { AppComponent } from './app.component';
+
+import { PersonEditComponent } from './person-edit.component';
+import { PersonsComponent } from './persons.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    PersonsComponent
+    PersonsComponent,
+    PersonEditComponent
   ],
   imports: [
     BrowserModule,
@@ -23,18 +26,20 @@ import { MatButtonModule, MatCardModule, MatGridListModule } from '@angular/mate
     HttpClientModule,
     ApolloModule,
     HttpLinkModule,
+    ReactiveFormsModule,
     MatGridListModule,
     MatCardModule,
-    MatButtonModule
+    MatButtonModule,
+    MatInputModule,
+    MatDialogModule
   ],
   providers: [],
-  bootstrap: [AppComponent]
+  bootstrap: [ AppComponent ],
+  entryComponents: [ PersonEditComponent ]
 })
 export class AppModule {
   constructor(apollo: Apollo, httpLink: HttpLink) {
     apollo.create({
-      // By default, this client will send queries to the
-      // `/graphql` endpoint on the same host
       link: httpLink.create({}),
       cache: new InMemoryCache(),
     });

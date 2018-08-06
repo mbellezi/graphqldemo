@@ -1,0 +1,17 @@
+<h2 mat-dialog-title>Alterar Personagem</h2>
+<mat-dialog-content class="form" [formGroup]="form">
+  <mat-form-field>
+    <input matInput formControlName="nome" name="nome" placeholder="Nome">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput formControlName="altura" name="altura" placeholder="Altura">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput formControlName="peso" name="peso" placeholder="Peso">
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="salvar_alteracoes()">Salvar</button>
+  <button mat-button mat-dialog-close>Cancelar</button>
+</mat-dialog-actions>
+

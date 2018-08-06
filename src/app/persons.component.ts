@@ -1,10 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { Apollo } from 'apollo-angular';
+import { Observable } from 'rxjs';
+import { ApolloQueryResult } from 'apollo-client';
+import { QueryRef } from 'apollo-angular/QueryRef';
 import gql from 'graphql-tag';
-import { from, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { MatDialog } from '@angular/material';
+import { PersonEditComponent } from './person-edit.component';
 
-interface IPersonagem {
+export interface IPersonagem {
   id: string
   nome: string
   altura: number
@@ -27,12 +30,13 @@ interface IPersonagem {
 
 export class PersonsComponent implements OnInit {
 
-  personagens$: Observable<IPersonagem[]>;
+  personagens$: Observable<ApolloQueryResult<IPersonagem[]>>;
+  queryRef: QueryRef<IPersonagem[]>;
 
-  constructor(private _apollo: Apollo) { }
+  constructor(private _apollo: Apollo, private _dialog: MatDialog) { }
 
   ngOnInit() {
-    this.personagens$ = this._apollo.query<{ personagens: IPersonagem[] }>({
+    this.queryRef = this._apollo.watchQuery<IPersonagem[]>({
       query: gql`
         {
           personagens {
@@ -42,14 +46,46 @@ export class PersonsComponent implements OnInit {
             peso
             planeta_natal
             imagem
-#            sorte
+            #            sorte
           }
         }
       `,
-    }).pipe(map(resp => resp.data.personagens));
+    });
+    this.personagens$ = this.queryRef.valueChanges;
   }
 
-  track(index, item) {
+
+  apaga_personagem(id: string) {
+    this._apollo.mutate<boolean>({
+      mutation: gql`
+        mutation {
+          apaga_personagem(id: "${id}")
+        }
+      `,
+      variables: { id }
+    }).toPromise().then(() => this.queryRef.refetch());
+  }
+
+
+  editar_personagem(info: IPersonagem) {
+    this._dialog.open(PersonEditComponent, { data: info }).beforeClose().toPromise()
+    .then((info: { id: string, caracteristicas: IPersonagem }) => {
+      this._apollo.mutate<boolean>({
+        mutation: gql`
+          mutation atualiza_personagem($id: ID!, $caracteristicas: IPersonagem){
+            atualiza_personagem(id: $id, caracteristicas: $caracteristicas) {
+              id
+            }
+          }
+        `,
+        variables: { id: info.id, caracteristicas: info.caracteristicas }
+      }).toPromise().then(() => this.queryRef.refetch());
+      console.log(info);
+    });
+  }
+
+
+  static track(index, item) {
     return item.id;
   }
 }
