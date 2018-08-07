@@ -46,7 +46,7 @@ export class PersonsComponent implements OnInit {
             peso
             planeta_natal
             imagem
-            #            sorte
+#            sorte
           }
         }
       `,

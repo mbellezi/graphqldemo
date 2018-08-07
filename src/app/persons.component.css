@@ -16,6 +16,10 @@
   height: 250px;
 }
 
+.sorte {
+  max-width: 200px;
+}
+
 .personagem-card .mat-card-title {
   max-width: 150px;
   white-space: nowrap;

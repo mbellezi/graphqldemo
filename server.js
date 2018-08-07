@@ -3,10 +3,11 @@ const fs = require('fs');
 const app = express();
 const { ApolloServer, gql } = require('apollo-server-express');
 const axios = require('axios');
+const DataLoader = require('dataloader');
 
 const data_people = JSON.parse(fs.readFileSync('./sw-data/people.json').toString());
 
-const pessoas = data_people.map(pessoa => {
+const personagens = data_people.map(pessoa => {
   return {
     ...pessoa.fields,
     altura: pessoa.fields.altura && pessoa.fields.altura !== 'unknown' ? parseFloat(pessoa.fields.altura) : null,
@@ -79,30 +80,73 @@ const typeDefs = gql`
   }
 `;
 
-const obtemPessoa = (id) => pessoas.filter(pessoa => pessoa.id === id)[ 0 ];
-const obtemPessoas = (ids) => pessoas.filter(pessoa => ids.findIndex(elm => elm === pessoa.id) > -1);
-const obtemSorte = () => axios.get('http://fortunecookieapi.herokuapp.com/v1/fortunes?limit=30').then(resp => resp.data[Math.ceil(Math.random()*30)].message);
+const obtemPersonagem = (id) => personagens.filter(pessoa => pessoa.id === id)[ 0 ];
 const converteAltura = (altura, tipo) => tipo === 'm' ? parseFloat(altura) / 100 : altura;
 
 const mudaNome = (id, novonome) => {
-  const pessoa = obtemPessoa(id);
-  pessoa.nome = novonome;
-  return pessoa;
+  const personagem = obtemPersonagem(id);
+  personagem.nome = novonome;
+  return personagem;
 };
 
 const atualizaPersonagem = (id, caracteristicas) => {
-  const pessoa = obtemPessoa(id);
-  const novaPessoa = { ...pessoa, ...caracteristicas };
-  const idx = pessoas.findIndex(pessoa => pessoa.id === id);
-  pessoas[ idx ] = novaPessoa;
-  return novaPessoa;
+  const perso = obtemPersonagem(id);
+  const novoPerso = { ...perso, ...caracteristicas };
+  const idx = personagens.findIndex(pessoa => pessoa.id === id);
+  personagens[ idx ] = novoPerso;
+  return novoPerso;
 };
 
 const apagaPersonagem = (id) => {
-  const idx = pessoas.findIndex(pessoa => pessoa.id === id);
-  return idx > -1 && pessoas.splice(idx, 1).length > 0;
+  const idx = personagens.findIndex(pessoa => pessoa.id === id);
+  return idx > -1 && personagens.splice(idx, 1).length > 0;
 };
 
+const obtemPersonagens = (ids) => {
+  return personagens.filter(pessoa => {
+    const idx = ids.findIndex(elm => elm === pessoa.id);
+    if (idx > -1) {
+      console.log(`Busquei: ${pessoa.id}`);
+      return true;
+    }
+    return false;
+  })
+};
+
+const obtemSorte = (id) => axios.get('http://fortunecookieapi.herokuapp.com/v1/fortunes?limit=35').then(resp => {
+  console.log('REST Acionado');
+  console.log(`Busquei: ${id}`);
+  return resp.data[ id ].message;
+});
+
+
+const obtemPersonagensDL = (ids) => {
+  const ret = [];
+  ids.forEach(id => {
+    const idx = personagens.findIndex(perso => perso.id === id);
+    if (idx > -1) {
+      console.log(`Busquei: ${id}`);
+      ret.push(personagens[ idx ]);
+    } else
+      ret.push(null);
+  });
+  return Promise.resolve(ret);
+};
+
+const obtemSortesDL = async (ids) => {
+  const sortes = (await axios.get('http://fortunecookieapi.herokuapp.com/v1/fortunes?limit=35')).data;
+  console.log('REST Acionado');
+  const ret = [];
+  ids.forEach(id => {
+    console.log(`Busquei: ${id}`);
+    ret.push(sortes[ id ].message);
+  });
+  return ret;
+};
+
+const idAleatorio = (max) => {
+  return Math.floor(Math.random() * 30);
+};
 
 const resolvers = {
   Personagem: {
@@ -116,13 +160,17 @@ const resolvers = {
   },
 
   Humano: {
-    amigos: (obj, args, context) => obtemPessoas(obj.amigos || []),
-    sorte: (obj, args, context) => obtemSorte(),
+    // amigos: (obj, args, context) => obtemPersonagens(obj.amigos || []),
+    // sorte: (obj, args, context) => obtemSorte(idAleatorio(30)),
+    amigos: (obj, args, context) => context.personagens.loadMany(obj.amigos || []),
+    sorte: (obj, args, context) => context.sorte.load(idAleatorio(30)),
     altura: (obj, args, context) => converteAltura(obj.altura, args.tipo)
   },
   Droid: {
-    amigos: (obj, args, context) => obtemPessoas(obj.amigos || []),
-    sorte: (obj, args, context) => obtemSorte(),
+    // amigos: (obj, args, context) => obtemPersonagens(obj.amigos || []),
+    // sorte: (obj, args, context) => obtemSorte(idAleatorio(30)),
+    amigos: (obj, args, context) => context.personagens.loadMany(obj.amigos || []),
+    sorte: (obj, args, context) => context.sorte.load(idAleatorio(30)),
     altura: (obj, args, context) => converteAltura(obj.altura, args.tipo)
   },
 
@@ -136,9 +184,9 @@ const resolvers = {
     },
   },
   Query: {
-    personagens: () => pessoas,
-    personagem: (obj, args, context) => obtemPessoa(args.id),
-    heroi: (obj, args, context) => obtemPessoa(args.id)
+    personagens: () => personagens,
+    personagem: (obj, args, context) => obtemPersonagem(args.id),
+    heroi: (obj, args, context) => obtemPersonagem(args.id)
   },
   Mutation: {
     muda_nome: (obj, args, context) => mudaNome(args.id, args.novonome),
@@ -147,17 +195,21 @@ const resolvers = {
   }
 };
 
-const server = new ApolloServer({
-  typeDefs, resolvers, playground: {
-    settings: {
-      'editor.theme': 'light', "editor.fontSize": 24, 'editor.cursorShape': 'block',
-    }
-  },
-  formatError: error => {
-    console.error(error);
-    return new Error('Internal server error');
-  },
-});
+const server = new ApolloServer(
+  {
+    typeDefs,
+    resolvers,
+    playground: { settings: { 'editor.theme': 'light', "editor.fontSize": 24, 'editor.cursorShape': 'block', } },
+    formatError: error => {
+      console.error(error);
+      return new Error('Internal server error');
+    },
+    context: () => ({
+      personagens: new DataLoader(ids => obtemPersonagensDL(ids)),
+      sorte: new DataLoader(ids => obtemSortesDL(ids))
+    })
+  }
+);
 
 
 server.applyMiddleware({ app });
